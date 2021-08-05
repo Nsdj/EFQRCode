@@ -217,6 +217,23 @@ public class EFQRCodeGenerator: NSObject {
         return withColors(backgroundColor: backgroundColor.cgColor() ?? CGColor.white()!,
                           foregroundColor: foregroundColor.cgColor() ?? CGColor.black()!)
     }
+    
+    /// Sets the generator to use the specified `CIColor`s.
+    /// - Parameters:
+    ///   - backgroundColor: The background `CIColor`.
+    ///     If conversion to `CGColor` fails, will use white instead.
+    ///   - foregroundColor: The foreground `CIColor` for code points.
+    ///     If conversion to `CGColor` fails, will use black instead.
+    ///   - finderPatternColor: The foreground `CIColor` for finder patterns.
+    ///     If conversion to `CGColor` fails, will use black instead.
+    /// - Returns: `self`, allowing chaining.
+    @discardableResult
+    @objc(withCIColorsForBackgroundColor:foregroundColor:finderPatternColor:)
+    public func withColors(backgroundColor: CIColor, foregroundColor: CIColor, finderPatternColor: CIColor) -> EFQRCodeGenerator {
+        return withColors(backgroundColor: backgroundColor.cgColor() ?? CGColor.white()!,
+                          foregroundColor: foregroundColor.cgColor() ?? CGColor.black()!,
+                          finderPatternColor: finderPatternColor.cgColor() ?? CGColor.black()!)
+    }
     #endif
 
     /// Sets the generator to use the specified `CGColor`s.
@@ -232,6 +249,21 @@ public class EFQRCodeGenerator: NSObject {
             .with(\.foregroundColor, foregroundColor)
     }
 
+    /// Sets the generator to use the specified `CGColor`s.
+    /// - Parameters:
+    ///   - backgroundColor: The background `CGColor`.
+    ///   - foregroundColor: The foreground `CGColor` for code points.
+    ///   - finderPatternColor: The foreground `CGColor` for finder patterns.
+    /// - Returns: `self`, allowing chaining.
+    @discardableResult
+    @objc(withCGColorsForBackgroundColor:foregroundColor:finderPatternColor:)
+    public func withColors(backgroundColor: CGColor, foregroundColor: CGColor, finderPatternColor: CGColor) -> EFQRCodeGenerator {
+        return self
+            .with(\.backgroundColor, backgroundColor)
+            .with(\.foregroundColor, foregroundColor)
+            .with(\.finderPatternColor, finderPatternColor)
+    }
+    
     /// Icon image in the center of QR code image, defaults to `nil`.
     public var icon: CGImage? = nil {
         didSet {

@@ -54,7 +54,8 @@ public enum EFQRCode {
     ///   - size: The size of the output image, ignored if `magnification` is set.
     ///   - magnification: The ratio of final size to smallest possible size
     ///   - backgroundColor: Background color of the QR code, defaults to white.
-    ///   - foregroundColor: Toreground color for code points, defaults to black.
+    ///   - foregroundColor: Foreground color for code points, defaults to black.
+    ///   - finderPatternColor: Foreground color for finder patterns, defaults to black.
     ///   - watermark: The background image to use, if any.
     ///   - watermarkMode: How to position the `watermark`, defaults to aspect fill.
     ///   - isWatermarkTransparent: Wether to use the alpha channel in watermark image.
@@ -73,6 +74,7 @@ public enum EFQRCode {
         magnification: EFIntSize? = nil,
         backgroundColor: CGColor = .white()!,
         foregroundColor: CGColor = .black()!,
+        finderPatternColor: CGColor = .black()!,
         watermark: CGImage? = nil,
         watermarkMode: EFWatermarkMode = .scaleAspectFill,
         watermarkIsTransparent isWatermarkTransparent: Bool = true,
@@ -85,7 +87,7 @@ public enum EFQRCode {
     ) -> CGImage? {
         return EFQRCodeGenerator(content: content, encoding: encoding, size: size)
             .withWatermark(watermark, mode: watermarkMode)
-            .withColors(backgroundColor: backgroundColor, foregroundColor: foregroundColor)
+            .withColors(backgroundColor: backgroundColor, foregroundColor: foregroundColor, finderPatternColor: finderPatternColor)
             .withInputCorrectionLevel(inputCorrectionLevel)
             .withIcon(icon, size: iconSize ?? EFIntSize(width: size.width / 5, height: size.height / 5))
             .withTransparentWatermark(isWatermarkTransparent)
