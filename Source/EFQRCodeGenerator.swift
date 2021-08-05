@@ -31,6 +31,7 @@ import QRCodeSwift
 #endif
 import CoreGraphics
 import Foundation
+import UIKit
 
 /// Class for generating QR code images.
 @objcMembers
@@ -182,7 +183,14 @@ public class EFQRCodeGenerator: NSObject {
     public func withMagnification(_ magnification: EFIntSize?) -> EFQRCodeGenerator {
         return with(\.magnification, magnification)
     }
-
+    
+    /// Finder Pattern Color
+    public var finderPatternColor: CGColor = CGColor.black()! {
+        didSet {
+            imageQRCode = nil
+        }
+    }
+    
     /// Background color, defaults to white.
     public var backgroundColor: CGColor = CGColor.white()! {
         didSet {
@@ -415,6 +423,7 @@ public class EFQRCodeGenerator: NSObject {
         var finalSize = self.size
         let finalBackgroundColor = getBackgroundColor()
         let finalForegroundColor = getForegroundColor()
+        let finalFinderPatternColor = getFinderPatternColor()
         let finalIcon = self.icon
         let finalIconSize = self.iconSize
         let finalWatermark = self.watermark
@@ -469,6 +478,7 @@ public class EFQRCodeGenerator: NSObject {
                         from: codes,
                         colorBack: finalBackgroundColor,
                         colorFront: finalForegroundColor,
+                        colorFinderPattern: finalFinderPatternColor,
                         size: minSuitableSize
                     )
                     return frontTransparentQRCodeImage
@@ -480,6 +490,7 @@ public class EFQRCodeGenerator: NSObject {
                         codes: codes,
                         colorBack: finalBackgroundColor,
                         colorFront: finalForegroundColor,
+                        colorFinderPattern: finalFinderPatternColor,
                         size: minSuitableSize
                     )
                     return frontQRCodeImage
@@ -554,18 +565,29 @@ public class EFQRCodeGenerator: NSObject {
         }
     }
 
+    private func getFinderPatternColor() -> CGColor {
+        switch mode {
+        case .binarization:
+            return .black()!
+        default:
+            return finderPatternColor
+        }
+    }
+    
     #if canImport(CoreImage)
     /// Create Colorful QR Image
     private func createQRCodeImage(
         codes: [[Bool]],
         colorBack: CIColor,
         colorFront: CIColor,
+        colorFinderPattern: CIColor,
         size: EFIntSize
     ) -> CGImage? {
-        guard let colorCGFront = colorFront.cgColor() else {
+        guard let colorCGFront = colorFront.cgColor(),
+              let colorCGFinderPattern = colorFinderPattern.cgColor() else {
             return nil
         }
-        return createQRCodeImage(codes: codes, colorFront: colorCGFront, size: size)
+        return createQRCodeImage(codes: codes, colorFront: colorCGFront, colorFinderPattern: colorCGFinderPattern, size: size)
     }
     #endif
 
@@ -573,6 +595,7 @@ public class EFQRCodeGenerator: NSObject {
         codes: [[Bool]],
         colorBack colorCGBack: CGColor? = nil,
         colorFront colorCGFront: CGColor,
+        colorFinderPattern colorCGFinderPattern: CGColor,
         size: EFIntSize
     ) -> CGImage? {
         let codeSize = codes.count
@@ -585,6 +608,7 @@ public class EFQRCodeGenerator: NSObject {
         
         var points = [CGPoint]()
         if let locations = getAlignmentPatternLocations(version: getVersion(size: codeSize - 2)) {
+            
             for indexX in locations {
                 for indexY in locations {
                     let finalX = indexX + 1
@@ -598,11 +622,10 @@ public class EFQRCodeGenerator: NSObject {
             }
         }
 
-
         var result: CGImage?
         if let context = createContext(size: size) {
             // Point
-            context.setFillColor(colorCGFront)
+
             for indexY in 0 ..< codeSize {
                 for indexX in 0 ..< codeSize where codes[indexX][indexY] {
                     // CTM-90
@@ -610,7 +633,15 @@ public class EFQRCodeGenerator: NSObject {
                     let indexYCTM = codeSize - indexX - 1
                     
                     let isStaticPoint = isStatic(x: indexX, y: indexY, size: codeSize, APLPoints: points)
-
+                    let isFinderPatternElement = isFinderPattern(x: indexX, y: indexY, size: codeSize)
+                    
+                    if isFinderPatternElement {
+                        context.setFillColor(colorCGFinderPattern)
+                    }
+                    else {
+                        context.setFillColor(colorCGFront)
+                    }
+                    
                     drawPoint(
                         context: context,
                         rect: CGRect(
@@ -634,12 +665,14 @@ public class EFQRCodeGenerator: NSObject {
         from codes: [[Bool]],
         colorBack: CIColor,
         colorFront: CIColor,
+        colorFinderPattern: CIColor,
         size: EFIntSize
     ) -> CGImage? {
         guard let colorCGBack = colorBack.cgColor(),
-              let colorCGFront = colorFront.cgColor()
+              let colorCGFront = colorFront.cgColor(),
+              let colorCGFinderPattern = colorFinderPattern.cgColor()
         else { return nil }
-        return createTransparentQRCodeImage(from: codes, colorBack: colorCGBack, colorFront: colorCGFront, size: size)
+        return createTransparentQRCodeImage(from: codes, colorBack: colorCGBack, colorFront: colorCGFront, colorFinderPattern: colorCGFinderPattern, size: size)
     }
     #endif
 
@@ -647,6 +680,7 @@ public class EFQRCodeGenerator: NSObject {
         from codes: [[Bool]],
         colorBack colorCGBack: CGColor,
         colorFront colorCGFront: CGColor,
+        colorFinderPattern colorCGFinderPattern: CGColor,
         size: EFIntSize
     ) -> CGImage? {
         let codeSize = codes.count
@@ -715,13 +749,20 @@ public class EFQRCodeGenerator: NSObject {
                 }
             }
             // Front point
-            context.setFillColor(colorCGFront)
             for indexY in 0 ..< codeSize {
                 for indexX in 0 ..< codeSize where codes[indexX][indexY] {
                     // CTM-90
                     let indexXCTM = indexY
                     let indexYCTM = codeSize - indexX - 1
                     if isStatic(x: indexX, y: indexY, size: codeSize, APLPoints: points) {
+                        
+                        if isFinderPattern(x: indexX, y: indexY, size: codeSize) {
+                            context.setFillColor(colorCGFinderPattern)
+                        }
+                        else {
+                            context.setFillColor(colorCGFront)
+                        }
+                        
                         drawPoint(
                             context: context,
                             rect: CGRect(
@@ -733,6 +774,8 @@ public class EFQRCodeGenerator: NSObject {
                             isStatic: true
                         )
                     } else {
+                        context.setFillColor(colorCGFront)
+                        
                         drawPoint(
                             context: context,
                             rect: CGRect(
@@ -787,6 +830,7 @@ public class EFQRCodeGenerator: NSObject {
                 codes: codes,
                 colorBack: getBackgroundColor(),
                 colorFront: getForegroundColor(),
+                colorFinderPattern: getFinderPatternColor(),
                 size: minSuitableSize
             ) {
                 context.draw(tryCGImage, in: CGRect(origin: .zero, size: size))
@@ -921,6 +965,10 @@ public class EFQRCodeGenerator: NSObject {
         return imageCodes
     }
 
+    private func isFinderPattern(x: Int, y: Int, size: Int) -> Bool {
+        return (x <= 8 && y <= 8) || (x <= 8 && y >= (size - 9)) || (x >= (size - 9) && y <= 8)
+    }
+    
     /// Special Points of QRCode
     private func isStatic(x: Int, y: Int, size: Int, APLPoints: [CGPoint]) -> Bool {
         // Empty border
@@ -929,7 +977,7 @@ public class EFQRCodeGenerator: NSObject {
         }
 
         // Finder Patterns
-        if (x <= 8 && y <= 8) || (x <= 8 && y >= (size - 9)) || (x >= (size - 9) && y <= 8) {
+        if isFinderPattern(x: x, y: y, size: size) {
             return true
         }
 
